@@ -395,18 +395,101 @@ function App() {
       customer_email: '',
       payment_method: 'orange_money'
     });
+    const [paymentStep, setPaymentStep] = useState('form'); // 'form', 'processing', 'confirmation'
+    const [paymentRef, setPaymentRef] = useState('');
+    const [paymentStatus, setPaymentStatus] = useState('');
 
-    const handleOrder = (e) => {
+    const handleOrder = async (e) => {
       e.preventDefault();
-      const orderData = {
-        ...orderForm,
-        items: cart.map(item => ({
-          product_id: item.id,
-          quantity: item.quantity
-        })),
-        total_amount: getTotalPrice()
-      };
-      submitOrder(orderData);
+      setPaymentStep('processing');
+      
+      try {
+        // Initiate mobile payment
+        const paymentData = {
+          amount: getTotalPrice(),
+          phone: orderForm.customer_phone,
+          provider: orderForm.payment_method,
+          customer_name: orderForm.customer_name,
+          customer_email: orderForm.customer_email,
+          order_items: cart.map(item => ({
+            product_id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price
+          }))
+        };
+
+        const response = await fetch(`${BACKEND_URL}/api/payment/initiate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(paymentData),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          setPaymentRef(result.payment_ref);
+          setPaymentStep('confirmation');
+        } else {
+          throw new Error('Payment initiation failed');
+        }
+      } catch (error) {
+        console.error('Payment error:', error);
+        alert(currentLang === 'fr' ? 'Erreur lors du paiement' : 'Error na payment');
+        setPaymentStep('form');
+      }
+    };
+
+    const confirmPayment = async () => {
+      try {
+        const confirmationData = {
+          payment_ref: paymentRef,
+          amount: getTotalPrice(),
+          phone: orderForm.customer_phone,
+          provider: orderForm.payment_method,
+          customer_name: orderForm.customer_name,
+          customer_email: orderForm.customer_email,
+          order_items: cart.map(item => ({
+            product_id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price
+          }))
+        };
+
+        const response = await fetch(`${BACKEND_URL}/api/payment/confirm`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(confirmationData),
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          setPaymentStatus('success');
+          alert(currentLang === 'fr' ? 'Paiement confirmé avec succès!' : 'Payment ti confirm na success!');
+          setCart([]);
+          setShowCart(false);
+          setPaymentStep('form');
+          setOrderForm({
+            customer_name: '',
+            customer_phone: '',
+            customer_email: '',
+            payment_method: 'orange_money'
+          });
+        } else {
+          setPaymentStatus('failed');
+          alert(result.message || (currentLang === 'fr' ? 'Échec du paiement' : 'Payment ti fail'));
+          setPaymentStep('form');
+        }
+      } catch (error) {
+        console.error('Payment confirmation error:', error);
+        alert(currentLang === 'fr' ? 'Erreur lors de la confirmation' : 'Error na confirmation');
+        setPaymentStep('form');
+      }
     };
 
     if (!showCart) return null;
