@@ -502,58 +502,146 @@ function App() {
             <button className="close-btn" onClick={() => setShowCart(false)}>×</button>
           </div>
           
-          <div className="cart-items">
-            {cart.map(item => (
-              <div key={item.id} className="cart-item">
-                <img src={item.image_url} alt={item.name} />
-                <div className="item-details">
-                  <h4>{currentLang === 'fr' ? item.name : item.name_sango}</h4>
-                  <p>{item.price} FCFA × {item.quantity}</p>
-                </div>
-                <div className="quantity-controls">
-                  <button onClick={() => updateQuantity(item.id, item.quantity - 1)}>-</button>
-                  <span>{item.quantity}</span>
-                  <button onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
-                </div>
+          {paymentStep === 'form' && (
+            <>
+              <div className="cart-items">
+                {cart.map(item => (
+                  <div key={item.id} className="cart-item">
+                    <img src={item.image_url} alt={item.name} />
+                    <div className="item-details">
+                      <h4>{currentLang === 'fr' ? item.name : item.name_sango}</h4>
+                      <p>{item.price} FCFA × {item.quantity}</p>
+                    </div>
+                    <div className="quantity-controls">
+                      <button onClick={() => updateQuantity(item.id, item.quantity - 1)}>-</button>
+                      <span>{item.quantity}</span>
+                      <button onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          
-          <div className="cart-total">
-            <h3>{t[currentLang].total}: {getTotalPrice()} FCFA</h3>
-          </div>
-          
-          <form onSubmit={handleOrder} className="order-form">
-            <input
-              type="text"
-              placeholder={t[currentLang].name}
-              value={orderForm.customer_name}
-              onChange={(e) => setOrderForm({...orderForm, customer_name: e.target.value})}
-              required
-            />
-            <input
-              type="tel"
-              placeholder={t[currentLang].phone}
-              value={orderForm.customer_phone}
-              onChange={(e) => setOrderForm({...orderForm, customer_phone: e.target.value})}
-              required
-            />
-            <input
-              type="email"
-              placeholder={t[currentLang].email}
-              value={orderForm.customer_email}
-              onChange={(e) => setOrderForm({...orderForm, customer_email: e.target.value})}
-              required
-            />
-            <select
-              value={orderForm.payment_method}
-              onChange={(e) => setOrderForm({...orderForm, payment_method: e.target.value})}
-            >
-              <option value="orange_money">{t[currentLang].orangeMoney}</option>
-              <option value="airtel_money">{t[currentLang].airtelMoney}</option>
-            </select>
-            <button type="submit" className="order-btn">{t[currentLang].orderNow}</button>
-          </form>
+              
+              <div className="cart-total">
+                <h3>{t[currentLang].total}: {getTotalPrice()} FCFA</h3>
+              </div>
+              
+              <form onSubmit={handleOrder} className="order-form">
+                <input
+                  type="text"
+                  placeholder={t[currentLang].name}
+                  value={orderForm.customer_name}
+                  onChange={(e) => setOrderForm({...orderForm, customer_name: e.target.value})}
+                  required
+                />
+                <input
+                  type="tel"
+                  placeholder={t[currentLang].phone}
+                  value={orderForm.customer_phone}
+                  onChange={(e) => setOrderForm({...orderForm, customer_phone: e.target.value})}
+                  required
+                />
+                <input
+                  type="email"
+                  placeholder={t[currentLang].email}
+                  value={orderForm.customer_email}
+                  onChange={(e) => setOrderForm({...orderForm, customer_email: e.target.value})}
+                  required
+                />
+                <div className="payment-provider-selection">
+                  <h4>{t[currentLang].paymentMethod}</h4>
+                  <div className="provider-options">
+                    <label className="provider-option">
+                      <input
+                        type="radio"
+                        value="orange_money"
+                        checked={orderForm.payment_method === "orange_money"}
+                        onChange={(e) => setOrderForm({...orderForm, payment_method: e.target.value})}
+                      />
+                      <div className="provider-info">
+                        <span className="provider-name">🟠 {t[currentLang].orangeMoney}</span>
+                        <span className="provider-desc">0023672946137</span>
+                      </div>
+                    </label>
+                    
+                    <label className="provider-option">
+                      <input
+                        type="radio"
+                        value="airtel_money"
+                        checked={orderForm.payment_method === "airtel_money"}
+                        onChange={(e) => setOrderForm({...orderForm, payment_method: e.target.value})}
+                      />
+                      <div className="provider-info">
+                        <span className="provider-name">🔴 {t[currentLang].airtelMoney}</span>
+                        <span className="provider-desc">République Centrafricaine</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+                <button type="submit" className="order-btn">{t[currentLang].orderNow}</button>
+              </form>
+            </>
+          )}
+
+          {paymentStep === 'processing' && (
+            <div className="payment-processing">
+              <div className="loading-spinner"></div>
+              <h3>{currentLang === 'fr' ? 'Initialisation du paiement...' : 'Payment ti start...'}</h3>
+              <p>{currentLang === 'fr' ? 'Veuillez patienter' : 'Lingbi na patience'}</p>
+            </div>
+          )}
+
+          {paymentStep === 'confirmation' && (
+            <div className="payment-confirmation">
+              <h3>{currentLang === 'fr' ? 'Confirmer le Paiement' : 'Confirm Payment'}</h3>
+              <div className="payment-details">
+                <p><strong>{t[currentLang].total}:</strong> {getTotalPrice()} FCFA</p>
+                <p><strong>{t[currentLang].paymentMethod}:</strong> {orderForm.payment_method === 'orange_money' ? 'Orange Money' : 'Airtel Money'}</p>
+                <p><strong>{t[currentLang].phone}:</strong> {orderForm.customer_phone}</p>
+                <p><strong>Référence:</strong> {paymentRef}</p>
+              </div>
+              
+              <div className="payment-instructions">
+                {orderForm.payment_method === 'orange_money' ? (
+                  <div className="orange-money-steps">
+                    <h4>🟠 Instructions Orange Money:</h4>
+                    <ol>
+                      <li>Composez *126# sur votre téléphone</li>
+                      <li>Sélectionnez "Paiement marchand"</li>
+                      <li>Entrez le montant: {getTotalPrice()} FCFA</li>
+                      <li>Entrez le code marchand: COSMETECH</li>
+                      <li>Confirmez avec votre code PIN</li>
+                    </ol>
+                  </div>
+                ) : (
+                  <div className="airtel-money-steps">
+                    <h4>🔴 Instructions Airtel Money:</h4>
+                    <ol>
+                      <li>Composez *555# sur votre téléphone</li>
+                      <li>Sélectionnez "Payer facture"</li>
+                      <li>Entrez le montant: {getTotalPrice()} FCFA</li>
+                      <li>Entrez le code marchand: COSMETECH</li>
+                      <li>Confirmez avec votre code PIN</li>
+                    </ol>
+                  </div>
+                )}
+              </div>
+              
+              <div className="confirmation-buttons">
+                <button 
+                  className="confirm-payment-btn"
+                  onClick={confirmPayment}
+                >
+                  {currentLang === 'fr' ? 'J\'ai effectué le paiement' : 'Ma fa payment'}
+                </button>
+                <button 
+                  className="cancel-payment-btn"
+                  onClick={() => setPaymentStep('form')}
+                >
+                  {currentLang === 'fr' ? 'Annuler' : 'Cancel'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
