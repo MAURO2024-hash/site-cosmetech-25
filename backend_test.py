@@ -119,6 +119,109 @@ class CosmetechAPITester(unittest.TestCase):
         self.assertIn("order_id", data)
         print("✅ Order creation endpoint is working")
         
+    def test_07_payment_initiate(self):
+        """Test payment initiation endpoint"""
+        if not self.products:
+            self.test_02_get_products()
+            
+        print("\n🔍 Testing payment initiation endpoint...")
+        payment_data = {
+            "amount": self.products[0]["price"] * 2,
+            "phone": "0123456789",
+            "provider": "orange_money",
+            "customer_name": "Test Customer",
+            "customer_email": "test@example.com",
+            "order_items": [
+                {
+                    "product_id": self.products[0]["id"],
+                    "name": self.products[0]["name"],
+                    "quantity": 2,
+                    "price": self.products[0]["price"]
+                }
+            ]
+        }
+        
+        response = requests.post(
+            f"{self.base_url}/api/payment/initiate",
+            json=payment_data
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["success"])
+        self.assertIn("payment_ref", data)
+        self.assertIn("message", data)
+        self.assertEqual(data["next_step"], "confirm_payment")
+        
+        # Save payment reference for next test
+        self.payment_ref = data["payment_ref"]
+        print("✅ Payment initiation endpoint is working")
+        
+    def test_08_payment_confirm(self):
+        """Test payment confirmation endpoint"""
+        # Skip if payment_ref is not available
+        if not hasattr(self, 'payment_ref'):
+            self.test_07_payment_initiate()
+            
+        print("\n🔍 Testing payment confirmation endpoint...")
+        confirmation_data = {
+            "payment_ref": self.payment_ref,
+            "amount": self.products[0]["price"] * 2,
+            "phone": "0123456789",
+            "provider": "orange_money",
+            "customer_name": "Test Customer",
+            "customer_email": "test@example.com",
+            "order_items": [
+                {
+                    "product_id": self.products[0]["id"],
+                    "name": self.products[0]["name"],
+                    "quantity": 2,
+                    "price": self.products[0]["price"]
+                }
+            ]
+        }
+        
+        response = requests.post(
+            f"{self.base_url}/api/payment/confirm",
+            json=confirmation_data
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        
+        # Note: The payment confirmation has a 90% success rate by design
+        # So we can't assert success, but we can check the structure
+        self.assertIn("success", data)
+        self.assertIn("status", data)
+        self.assertIn("message", data)
+        
+        if data["success"]:
+            self.assertEqual(data["status"], "confirmed")
+            self.assertIn("order_id", data)
+            self.assertIn("transaction_id", data)
+            print("✅ Payment confirmation succeeded")
+        else:
+            self.assertEqual(data["status"], "failed")
+            self.assertIn("error_code", data)
+            print("ℹ️ Payment confirmation failed (expected in 10% of cases)")
+        
+        print("✅ Payment confirmation endpoint is working")
+        
+    def test_09_payment_status(self):
+        """Test payment status endpoint"""
+        # Skip if payment_ref is not available
+        if not hasattr(self, 'payment_ref'):
+            self.test_07_payment_initiate()
+            
+        print("\n🔍 Testing payment status endpoint...")
+        response = requests.get(
+            f"{self.base_url}/api/payment/status/{self.payment_ref}"
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["payment_ref"], self.payment_ref)
+        self.assertIn("status", data)
+        self.assertIn("message", data)
+        print("✅ Payment status endpoint is working")
+        
     def run_all_tests(self):
         """Run all tests and print a summary"""
         test_methods = [method for method in dir(self) if method.startswith('test_')]
