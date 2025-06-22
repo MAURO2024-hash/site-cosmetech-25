@@ -207,6 +207,108 @@ async def get_news():
     news = list(news_collection.find({}, {"_id": 0}).sort("created_at", -1))
     return news
 
+# Mobile Payment Simulation (Replace with real Flutterwave integration later)
+@app.post("/api/payment/initiate")
+async def initiate_mobile_payment(payment_data: dict):
+    """Simulate mobile payment initiation"""
+    import time
+    import random
+    
+    # Simulate payment reference
+    payment_ref = f"COSMETECH_{int(time.time())}_{random.randint(1000, 9999)}"
+    
+    # Validate payment data
+    required_fields = ["amount", "phone", "provider", "customer_name"]
+    for field in required_fields:
+        if field not in payment_data:
+            raise HTTPException(status_code=400, detail=f"Missing field: {field}")
+    
+    # Simulate provider validation
+    valid_providers = ["orange_money", "airtel_money"]
+    if payment_data["provider"] not in valid_providers:
+        raise HTTPException(status_code=400, detail="Invalid payment provider")
+    
+    # Create payment record
+    payment_record = {
+        "payment_ref": payment_ref,
+        "amount": payment_data["amount"],
+        "phone": payment_data["phone"],
+        "provider": payment_data["provider"],
+        "customer_name": payment_data["customer_name"],
+        "customer_email": payment_data.get("customer_email", ""),
+        "status": "initiated",
+        "created_at": datetime.now(),
+        "order_items": payment_data.get("order_items", [])
+    }
+    
+    # In real implementation, save to database
+    # payments_collection.insert_one(payment_record)
+    
+    return {
+        "success": True,
+        "payment_ref": payment_ref,
+        "message": f"Paiement initié via {payment_data['provider'].replace('_', ' ').title()}",
+        "next_step": "confirm_payment"
+    }
+
+@app.post("/api/payment/confirm")
+async def confirm_mobile_payment(confirmation_data: dict):
+    """Simulate mobile payment confirmation"""
+    import random
+    import time
+    
+    payment_ref = confirmation_data.get("payment_ref")
+    if not payment_ref:
+        raise HTTPException(status_code=400, detail="Payment reference required")
+    
+    # Simulate payment processing delay
+    await asyncio.sleep(2)
+    
+    # Simulate success/failure (90% success rate)
+    success = random.random() < 0.9
+    
+    if success:
+        # Create successful order
+        order_id = str(uuid.uuid4())
+        order = {
+            "id": order_id,
+            "payment_ref": payment_ref,
+            "customer_name": confirmation_data.get("customer_name", ""),
+            "customer_phone": confirmation_data.get("phone", ""),
+            "customer_email": confirmation_data.get("customer_email", ""),
+            "items": confirmation_data.get("order_items", []),
+            "total_amount": confirmation_data.get("amount", 0),
+            "payment_method": confirmation_data.get("provider", ""),
+            "status": "confirmed",
+            "created_at": datetime.now()
+        }
+        orders_collection.insert_one(order)
+        
+        return {
+            "success": True,
+            "status": "confirmed",
+            "order_id": order_id,
+            "message": "Paiement confirmé avec succès!",
+            "transaction_id": f"TXN_{int(time.time())}"
+        }
+    else:
+        return {
+            "success": False,
+            "status": "failed",
+            "message": "Échec du paiement. Veuillez réessayer.",
+            "error_code": "PAYMENT_FAILED"
+        }
+
+@app.get("/api/payment/status/{payment_ref}")
+async def get_payment_status(payment_ref: str):
+    """Get payment status"""
+    # In real implementation, check database and/or external API
+    return {
+        "payment_ref": payment_ref,
+        "status": "pending",
+        "message": "Paiement en cours de traitement"
+    }
+
 @app.get("/api/health")
 async def health_check():
     return {"status": "healthy", "company": "Cosmetech Innovations"}
